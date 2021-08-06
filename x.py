@@ -3,6 +3,7 @@ import struct
 import time
 from math import sqrt
 from statistics import mean
+import adafruit_bmp3xx
 
 Pmin=-1
 Pmax=1
@@ -105,8 +106,6 @@ class MS5525DSO:
 def calibrate_asi_aoa(cycles):
     with SMBus(1) as bus:
         
-        print('calibrating')
-
         devASI = MS5525DSO(bus, 0x76, 0,0) 
         devASI.dump()
         # get constants 
@@ -118,6 +117,9 @@ def calibrate_asi_aoa(cycles):
         asiTemplist = []
         aoaPreslist = []
         aoaTemplist = []
+        
+        print('calibrating')
+        
         
         for i in range(cycles):
             
@@ -149,36 +151,40 @@ def calibrate_asi_aoa(cycles):
         asi_temp_corr = 0
         
         return (asi_pres_corr, asi_temp_corr, aoa_pres_corr, aoa_temp_corr)
- 
+
+
+
+
+
 # get calibration for zero 
-asi_pres_corr,asi_temp_corr,aoa_pres_corr,aoa_temp_corr = calibrate_asi_aoa(100) 
+# asi_pres_corr,asi_temp_corr,aoa_pres_corr,aoa_temp_corr = calibrate_asi_aoa(100) 
 
  
  
-with SMBus(1) as bus:
-
-    devASI = MS5525DSO(bus, 0x76, asi_pres_corr, asi_temp_corr)
-#     devASI.dump()
-    # get constants 
-
-    devAOA = MS5525DSO(bus, 0x77, aoa_pres_corr, aoa_temp_corr) 
-#     devAOA.dump()
-    
-    while True:
-        # can consider using deque routines here
-        asi_temp,asi_pres=devASI.temp_and_pressure()
-        IAS=sqrt(2*abs(asi_pres)/air_dens)*1.944
-        
-        
-        print('ASI Press', round(asi_pres,0), 'Pa', round(IAS,0),"kts IAS")
-                
-        aoa_temp,aoa_pres=devAOA.temp_and_pressure()
-        # Can try different formulas
-        AOA_ratio = asi_pres/(2* asi_pres - aoa_pres)
-        
-        print("AOA Pres", round(aoa_pres,0), 'Pa', 'AOA Ratio=', round(AOA_ratio,2))
-        time.sleep(.25)
-        
+# with SMBus(1) as bus:
+# 
+#     devASI = MS5525DSO(bus, 0x76, asi_pres_corr, asi_temp_corr)
+# #     devASI.dump()
+#     # get constants 
+# 
+#     devAOA = MS5525DSO(bus, 0x77, aoa_pres_corr, aoa_temp_corr) 
+# #     devAOA.dump()
+#     
+#     while True:
+#         # can consider using deque routines here
+#         asi_temp,asi_pres=devASI.temp_and_pressure()
+#         IAS=sqrt(2*abs(asi_pres)/air_dens)*1.944
+#         
+#         
+#         print('ASI Press', round(asi_pres,0), 'Pa', round(IAS,0),"kts IAS")
+#                 
+#         aoa_temp,aoa_pres=devAOA.temp_and_pressure()
+#         # Can try different formulas
+#         AOA_ratio = asi_pres/(2* asi_pres - aoa_pres)
+#         
+#         print("AOA Pres", round(aoa_pres,0), 'Pa', 'AOA Ratio=', round(AOA_ratio,2))
+#         time.sleep(.25)
+#      
     #while True:
     #    dT, temp = devASI.get_temperature()
     #    print("ASI Temp (dT, temp):", dT, temp)
