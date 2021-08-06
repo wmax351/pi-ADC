@@ -2,6 +2,7 @@ from smbus2 import SMBus
 import struct
 import time
 from math import sqrt
+from statistics import mean
 
 Pmin=-1
 Pmax=1
@@ -85,9 +86,9 @@ class MS5525DSO:
         pressure = self.get_pressure(dT)
         
         temp = int(temp) / 100.
-        print(f"Temp: {temp} degC")
+#         print(f"Temp: {temp} degC")
         press = int((int(pressure) / 10000.)*6895.) + self.pcorr
-        print(f"Pressure: {press} Pascal")
+#         print(f"Pressure: {press} Pascal")
 
         return temp, press
 
@@ -101,27 +102,83 @@ class MS5525DSO:
 
 
     
+def calibrate_asi_aoa(cycles):
+    with SMBus(1) as bus:
+        
+        print('calibrating')
 
+        devASI = MS5525DSO(bus, 0x76, 0,0) 
+        devASI.dump()
+        # get constants 
+
+        devAOA = MS5525DSO(bus, 0x77, 0,0) 
+        devAOA.dump()
+        
+        asiPreslist = []
+        asiTemplist = []
+        aoaPreslist = []
+        aoaTemplist = []
+        
+        for i in range(cycles):
+            
+            asi_temp,asi_pres=devASI.temp_and_pressure()
+            
+            aoa_temp,aoa_pres=devAOA.temp_and_pressure()
+            
+            asiPreslist.append(asi_pres)
+            asiTemplist.append(asi_temp)
+            aoaPreslist.append(aoa_pres)
+            aoaTemplist.append(aoa_temp)
+        
+        
+        asi_pres_avg = mean(asiPreslist)
+        asi_temp_avg = mean(asiTemplist)
+        aoa_pres_avg = mean(aoaPreslist)
+        aoa_temp_avg = mean(aoaTemplist)
+        
+        
+        print('count',len(asiPreslist))
+        print('mean asi pres', asi_pres_avg)
+        print('mean asi temp', asi_temp_avg)
+        print('mean aoa pres', aoa_pres_avg)
+        print('mean aoa temp', aoa_temp_avg)
+        
+        asi_pres_corr = -asi_pres_avg
+        aoa_pres_corr = -aoa_pres_avg
+        aoa_temp_corr = (asi_temp_avg - aoa_temp_avg)
+        asi_temp_corr = 0
+        
+        return (asi_pres_corr, asi_temp_corr, aoa_pres_corr, aoa_temp_corr)
+ 
+# get calibration for zero 
+asi_pres_corr,asi_temp_corr,aoa_pres_corr,aoa_temp_corr = calibrate_asi_aoa(100) 
+
+ 
+ 
 with SMBus(1) as bus:
 
-    devASI = MS5525DSO(bus, 0x76,31,25)
-    devASI.dump()
+    devASI = MS5525DSO(bus, 0x76, asi_pres_corr, asi_temp_corr)
+#     devASI.dump()
     # get constants 
 
-    devAOA = MS5525DSO(bus, 0x77,-7,0)
-    devAOA.dump()
-
+    devAOA = MS5525DSO(bus, 0x77, aoa_pres_corr, aoa_temp_corr) 
+#     devAOA.dump()
+    
     while True:
-        print("ASI")
+        # can consider using deque routines here
         asi_temp,asi_pres=devASI.temp_and_pressure()
         IAS=sqrt(2*abs(asi_pres)/air_dens)*1.944
-        print(IAS,"kts IAS")
         
-
-        print("AOA")
+        
+        print('ASI Press', round(asi_pres,0), 'Pa', round(IAS,0),"kts IAS")
+                
         aoa_temp,aoa_pres=devAOA.temp_and_pressure()
+        # Can try different formulas
+        AOA_ratio = asi_pres/(2* asi_pres - aoa_pres)
         
-        time.sleep(.5)
+        print("AOA Pres", round(aoa_pres,0), 'Pa', 'AOA Ratio=', round(AOA_ratio,2))
+        time.sleep(.25)
+        
     #while True:
     #    dT, temp = devASI.get_temperature()
     #    print("ASI Temp (dT, temp):", dT, temp)
