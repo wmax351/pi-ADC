@@ -40,7 +40,7 @@ class MS5525DSO:
         self.C6 = consts[6]
 
     def reset(self):
-        print(f"Resetting {self.bid}...")
+        print("Resetting", {self.bid})
         self.bus.write_byte(self.bid, 0x1E)
         time.sleep(0.5)
 
