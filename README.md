@@ -1,2 +1,2 @@
 # pi-ADC
- Air Data Controller based around a raspberry Pi
+ Air Data Controller prototype based around a raspberry Pi. Not for use. 
